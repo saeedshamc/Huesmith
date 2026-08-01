@@ -221,11 +221,40 @@ object PaletteGenerator {
         }.joinToString("\n")
     }
 
+    fun exportJsonCode(colors: List<HslColor>, paletteName: String = "Huesmith Palette"): String {
+        val jsonArray = colors.joinToString(",\n    ") { col ->
+            """{"hex": "${col.toHex()}", "hue": ${col.hue.toInt()}, "saturation": ${(col.saturation * 100).toInt()}, "lightness": ${(col.lightness * 100).toInt()}}"""
+        }
+        return """
+            {
+              "name": "$paletteName",
+              "colors": [
+                $jsonArray
+              ]
+            }
+        """.trimIndent()
+    }
+
     fun exportFlutterCode(colors: List<HslColor>): String {
         val colorItems = colors.mapIndexed { idx, col ->
             "static const color${idx + 1} = Color(0xFF${col.toHex().removePrefix("#")});"
         }.joinToString("\n  ")
-        return "class AppPalette {\n  $colorItems\n}"
+        return """
+            import 'package:flutter/material.dart';
+
+            class AppPalette {
+              $colorItems
+
+              static ThemeData get themeData => ThemeData(
+                    colorScheme: ColorScheme.light(
+                      primary: color1,
+                      secondary: color2,
+                      tertiary: ${if (colors.size > 2) "color3" else "color1"},
+                      surface: ${if (colors.size > 3) "color4" else "Colors.white"},
+                    ),
+                  );
+            }
+        """.trimIndent()
     }
 
     fun exportComposeCode(colors: List<HslColor>): String {

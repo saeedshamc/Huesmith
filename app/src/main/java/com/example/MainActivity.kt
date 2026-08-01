@@ -63,6 +63,9 @@ import com.example.ui.components.LiveMockupStudio
 import com.example.ui.components.SavedPalettesTab
 import com.example.ui.theme.HuesmithTheme
 import com.example.viewmodel.HuesmithViewModel
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
+import com.example.color.PngExporter
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -86,6 +89,8 @@ fun HuesmithMainApp(viewModel: HuesmithViewModel = viewModel()) {
     var currentTab by remember { mutableIntStateOf(0) }
     var inspectedColor by remember { mutableStateOf<HslColor?>(null) }
     val snackbarHostState = remember { SnackbarHostState() }
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
 
     LaunchedEffect(uiState.userNotification) {
         uiState.userNotification?.let { msg ->
@@ -200,7 +205,16 @@ fun HuesmithMainApp(viewModel: HuesmithViewModel = viewModel()) {
                         CompanionPalettesSection(
                             paletteSet = paletteSet,
                             isDarkModeTransformActive = uiState.isDarkModeTransformActive,
+                            lockedIndices = uiState.lockedColorIndices,
+                            onToggleLock = { idx -> viewModel.toggleColorLock(idx) },
+                            onShuffle = { viewModel.shuffleUnlockedColors() },
                             onInspectColor = { inspectedColor = it },
+                            onSharePng = { title, colors ->
+                                coroutineScope.launch {
+                                    val uri = PngExporter.generatePaletteCardPng(context, title, uiState.selectedDomain.title, colors)
+                                    uri?.let { PngExporter.sharePngImage(context, it, title) }
+                                }
+                            },
                             onSavePalette = { title, type, colors, notes ->
                                 viewModel.savePalette(title, type, colors, notes)
                             }
@@ -225,7 +239,9 @@ fun HuesmithMainApp(viewModel: HuesmithViewModel = viewModel()) {
                             paletteSet = paletteSet,
                             mockupType = uiState.mockupType,
                             isDarkModeTransformActive = uiState.isDarkModeTransformActive,
-                            onMockupTypeSelected = { viewModel.setMockupType(it) }
+                            isAccessibilityInspectorActive = uiState.isAccessibilityInspectorActive,
+                            onMockupTypeSelected = { viewModel.setMockupType(it) },
+                            onToggleAccessibilityInspector = { viewModel.toggleAccessibilityInspector() }
                         )
 
                         Spacer(modifier = Modifier.height(24.dp))

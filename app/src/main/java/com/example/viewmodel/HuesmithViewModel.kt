@@ -32,6 +32,8 @@ data class HuesmithUiState(
     val selectedDomain: DomainProfile = DomainProfile.BRANDING,
     val isDarkModeTransformActive: Boolean = false,
     val mockupType: MockupType = MockupType.MOBILE_APP,
+    val isAccessibilityInspectorActive: Boolean = false,
+    val lockedColorIndices: Set<Int> = emptySet(),
     val extractedImageColors: List<HslColor> = emptyList(),
     val isExtractingImage: Boolean = false,
     val searchQuery: String = "",
@@ -101,6 +103,41 @@ class HuesmithViewModel(application: Application) : AndroidViewModel(application
     fun toggleDarkModeTransform() {
         val current = _uiState.value.isDarkModeTransformActive
         _uiState.value = _uiState.value.copy(isDarkModeTransformActive = !current)
+    }
+
+    fun toggleColorLock(index: Int) {
+        val currentLocks = _uiState.value.lockedColorIndices.toMutableSet()
+        if (currentLocks.contains(index)) {
+            currentLocks.remove(index)
+        } else {
+            currentLocks.add(index)
+        }
+        _uiState.value = _uiState.value.copy(lockedColorIndices = currentLocks)
+    }
+
+    fun toggleAccessibilityInspector() {
+        val current = _uiState.value.isAccessibilityInspectorActive
+        _uiState.value = _uiState.value.copy(isAccessibilityInspectorActive = !current)
+    }
+
+    fun shuffleUnlockedColors() {
+        val state = _uiState.value
+        val isBaseLocked = state.lockedColorIndices.contains(0)
+
+        // If base color is not locked, randomize base hue & saturation slightly
+        val newBase = if (!isBaseLocked) {
+            val randomHue = (0..360).random().toFloat()
+            val randomSat = (60..100).random() / 100f
+            val randomLight = (35..65).random() / 100f
+            HslColor(randomHue, randomSat, randomLight)
+        } else {
+            state.baseColor
+        }
+
+        _uiState.value = state.copy(
+            baseColor = newBase,
+            userNotification = if (state.lockedColorIndices.isNotEmpty()) "Shuffled unlocked colors while keeping ${state.lockedColorIndices.size} color(s) locked!" else "Shuffled palette!"
+        )
     }
 
     fun setMockupType(type: MockupType) {

@@ -70,8 +70,19 @@ fun ExportShareCard(paletteSet: GeneratedPaletteSet) {
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
+                OutlinedButton(
+                    onClick = {
+                        val text = PaletteGenerator.exportJsonCode(activePalette, "${paletteSet.domain.title} Palette")
+                        shareText(context, text, "Huesmith JSON Palette")
+                    },
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text("JSON", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                }
+
                 OutlinedButton(
                     onClick = {
                         val text = PaletteGenerator.exportCssVariables(activePalette)
@@ -80,7 +91,7 @@ fun ExportShareCard(paletteSet: GeneratedPaletteSet) {
                     shape = RoundedCornerShape(10.dp),
                     modifier = Modifier.weight(1f)
                 ) {
-                    Text("Share CSS", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    Text("CSS", fontSize = 11.sp, fontWeight = FontWeight.Bold)
                 }
 
                 OutlinedButton(

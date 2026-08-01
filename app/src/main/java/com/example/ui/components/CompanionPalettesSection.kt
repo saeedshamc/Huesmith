@@ -58,11 +58,20 @@ import com.example.color.PaletteGenerator
 import com.example.color.RgbColor
 import com.example.color.WcagUtils
 
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.LockOpen
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Share
+
 @Composable
 fun CompanionPalettesSection(
     paletteSet: GeneratedPaletteSet,
     isDarkModeTransformActive: Boolean,
+    lockedIndices: Set<Int>,
+    onToggleLock: (Int) -> Unit,
+    onShuffle: () -> Unit,
     onInspectColor: (HslColor) -> Unit,
+    onSharePng: (title: String, colors: List<HslColor>) -> Unit,
     onSavePalette: (title: String, paletteType: String, colorsHex: List<String>, notes: String) -> Unit
 ) {
     val context = LocalContext.current
@@ -84,24 +93,28 @@ fun CompanionPalettesSection(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = "Derived Companion Palettes",
-                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-                color = MaterialTheme.colorScheme.onSurface
-            )
+            Column {
+                Text(
+                    text = "Derived Companion Palettes",
+                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = "Tap lock icon on swatches to keep favorite colors fixed during shuffle.",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
 
-            if (isDarkModeTransformActive) {
-                Surface(
-                    color = MaterialTheme.colorScheme.primaryContainer,
-                    shape = RoundedCornerShape(8.dp)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Button(
+                    onClick = onShuffle,
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier.testTag("shuffle_colors_button")
                 ) {
-                    Text(
-                        text = "🌙 Dark Mode Transformed",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                        fontWeight = FontWeight.Bold
-                    )
+                    Icon(imageVector = Icons.Default.Refresh, contentDescription = "Shuffle Unlocked Colors", modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Shuffle", fontSize = 12.sp, fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -114,12 +127,15 @@ fun CompanionPalettesSection(
             badgeText = "${paletteSet.domain.title} Rule",
             noteText = paletteSet.domainTransformationNote,
             colors = activeDomain,
+            lockedIndices = lockedIndices,
+            onToggleLock = onToggleLock,
             onInspectColor = onInspectColor,
             onSaveClick = { saveDialogPalette = "Domain-Adjusted ${paletteSet.domain.title}" to activeDomain },
             onCopyClick = {
                 val code = PaletteGenerator.exportCssVariables(activeDomain, "domain")
                 copyToClipboard(context, code)
             },
+            onSharePngClick = { onSharePng("Domain-Adjusted ${paletteSet.domain.title}", activeDomain) },
             isFeatured = true
         )
 
@@ -131,12 +147,15 @@ fun CompanionPalettesSection(
             badgeText = "Pure Hue Math",
             noteText = "Exact opposite hue on the HSL color wheel.",
             colors = activeExact,
+            lockedIndices = lockedIndices,
+            onToggleLock = onToggleLock,
             onInspectColor = onInspectColor,
             onSaveClick = { saveDialogPalette = "Exact Complementary" to activeExact },
             onCopyClick = {
                 val code = PaletteGenerator.exportCssVariables(activeExact, "exact")
                 copyToClipboard(context, code)
-            }
+            },
+            onSharePngClick = { onSharePng("Exact Complementary", activeExact) }
         )
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -147,12 +166,15 @@ fun CompanionPalettesSection(
             badgeText = "Harmonic Spectrum",
             noteText = "Adjacent hues creating naturally cohesive visual warmth.",
             colors = activeAnalogous,
+            lockedIndices = lockedIndices,
+            onToggleLock = onToggleLock,
             onInspectColor = onInspectColor,
             onSaveClick = { saveDialogPalette = "Analogous Triad" to activeAnalogous },
             onCopyClick = {
                 val code = PaletteGenerator.exportCssVariables(activeAnalogous, "analogous")
                 copyToClipboard(context, code)
-            }
+            },
+            onSharePngClick = { onSharePng("Analogous Triad", activeAnalogous) }
         )
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -163,12 +185,15 @@ fun CompanionPalettesSection(
             badgeText = "Desaturated Balance",
             noteText = "Achromatic gray/beige anchors tuned to base color lightness.",
             colors = activeNeutral,
+            lockedIndices = lockedIndices,
+            onToggleLock = onToggleLock,
             onInspectColor = onInspectColor,
             onSaveClick = { saveDialogPalette = "Neutral Companion" to activeNeutral },
             onCopyClick = {
                 val code = PaletteGenerator.exportCssVariables(activeNeutral, "neutral")
                 copyToClipboard(context, code)
-            }
+            },
+            onSharePngClick = { onSharePng("Neutral Companion", activeNeutral) }
         )
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -179,12 +204,15 @@ fun CompanionPalettesSection(
             badgeText = "Monochromatic Depth",
             noteText = "+12% lighter, base anchor, -15% & -30% darker lightness steps.",
             colors = activeTonal,
+            lockedIndices = lockedIndices,
+            onToggleLock = onToggleLock,
             onInspectColor = onInspectColor,
             onSaveClick = { saveDialogPalette = "Tonal Steps" to activeTonal },
             onCopyClick = {
                 val code = PaletteGenerator.exportCssVariables(activeTonal, "tonal")
                 copyToClipboard(context, code)
-            }
+            },
+            onSharePngClick = { onSharePng("Tonal Steps", activeTonal) }
         )
     }
 
@@ -260,9 +288,12 @@ private fun PaletteCard(
     badgeText: String,
     noteText: String,
     colors: List<HslColor>,
+    lockedIndices: Set<Int>,
+    onToggleLock: (Int) -> Unit,
     onInspectColor: (HslColor) -> Unit,
     onSaveClick: () -> Unit,
     onCopyClick: () -> Unit,
+    onSharePngClick: () -> Unit,
     isFeatured: Boolean = false
 ) {
     Card(
@@ -317,7 +348,7 @@ private fun PaletteCard(
 
             Spacer(modifier = Modifier.height(14.dp))
 
-            // Swatches Bar
+            // Swatches Bar with Lock Toggle Buttons
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -326,30 +357,52 @@ private fun PaletteCard(
                     val rgb = hsl.toRgb()
                     val contrastWhite = WcagUtils.contrastRatio(rgb, RgbColor(255, 255, 255))
                     val isLight = contrastWhite < 4.5f
+                    val isLocked = lockedIndices.contains(idx)
+                    val contentColor = if (isLight) Color.Black else Color.White
 
                     Column(
                         modifier = Modifier
                             .weight(1f)
                             .clip(RoundedCornerShape(12.dp))
                             .background(hsl.toComposeColor())
-                            .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f), RoundedCornerShape(12.dp))
+                            .border(
+                                width = if (isLocked) 2.dp else 1.dp,
+                                color = if (isLocked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline.copy(alpha = 0.2f),
+                                shape = RoundedCornerShape(12.dp)
+                            )
                             .clickable { onInspectColor(hsl) }
-                            .padding(vertical = 12.dp, horizontal = 4.dp),
+                            .padding(vertical = 10.dp, horizontal = 4.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
+                        IconButton(
+                            onClick = { onToggleLock(idx) },
+                            modifier = Modifier
+                                .size(24.dp)
+                                .testTag("lock_color_button_$idx")
+                        ) {
+                            Icon(
+                                imageVector = if (isLocked) Icons.Default.Lock else Icons.Default.LockOpen,
+                                contentDescription = if (isLocked) "Unlock Color" else "Lock Color",
+                                tint = contentColor.copy(alpha = if (isLocked) 1.0f else 0.5f),
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(2.dp))
+
                         Text(
                             text = hsl.toHex(),
                             fontFamily = FontFamily.Monospace,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
-                            color = if (isLight) Color.Black else Color.White
+                            color = contentColor
                         )
-                        Spacer(modifier = Modifier.height(4.dp))
+                        Spacer(modifier = Modifier.height(2.dp))
                         Text(
                             text = if (contrastWhite >= 4.5f) "AA ✓" else "AA ⚡",
                             fontSize = 9.sp,
                             fontWeight = FontWeight.SemiBold,
-                            color = if (isLight) Color.Black.copy(alpha = 0.7f) else Color.White.copy(alpha = 0.8f)
+                            color = contentColor.copy(alpha = 0.8f)
                         )
                     }
                 }
@@ -360,8 +413,22 @@ private fun PaletteCard(
             // Card Action Buttons Row
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically
             ) {
+                IconButton(
+                    onClick = onSharePngClick,
+                    modifier = Modifier.testTag("share_png_card_button")
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Share,
+                        contentDescription = "Share PNG Image Card",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(4.dp))
+
                 OutlinedButton(
                     onClick = onCopyClick,
                     shape = RoundedCornerShape(8.dp),
