@@ -1,0 +1,6 @@
+{
+  "name": "Huesmith",
+  "description": "Domain-aware color palette generator and WCAG craftsman running 100% offline.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
