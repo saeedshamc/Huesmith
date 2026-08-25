@@ -29,6 +29,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AssignmentTurnedIn
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.Build
+import androidx.compose.material.icons.filled.Colorize
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.Dashboard
@@ -36,6 +37,9 @@ import androidx.compose.material.icons.filled.Gradient
 import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -75,6 +79,7 @@ import com.example.ui.components.DomainSelectorBar
 import com.example.ui.components.ExportShareCard
 import com.example.ui.components.GradientAndToolsTab
 import com.example.ui.components.LiveMockupStudio
+import com.example.ui.components.ManualColorPickerDialog
 import com.example.ui.components.SavedPalettesTab
 import com.example.ui.components.SyncModeCard
 import com.example.ui.theme.HuesmithTheme
@@ -104,6 +109,8 @@ fun HuesmithMainApp(viewModel: HuesmithViewModel = viewModel()) {
 
     var currentTab by remember { mutableIntStateOf(0) }
     var inspectedColor by remember { mutableStateOf<HslColor?>(null) }
+    var showManualColorPicker by remember { mutableStateOf(false) }
+
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
@@ -172,6 +179,25 @@ fun HuesmithMainApp(viewModel: HuesmithViewModel = viewModel()) {
                     containerColor = MaterialTheme.colorScheme.surface
                 )
             )
+        },
+        floatingActionButton = {
+            // Floating Action Button to open system/manual color picker
+            FloatingActionButton(
+                onClick = { showManualColorPicker = true },
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary,
+                elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 4.dp),
+                modifier = Modifier.testTag("main_screen_color_picker_fab")
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(imageVector = Icons.Default.Colorize, contentDescription = "Manual Color Picker", modifier = Modifier.size(20.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Pick Color", fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                }
+            }
         },
         bottomBar = {
             NavigationBar(
@@ -286,7 +312,7 @@ fun HuesmithMainApp(viewModel: HuesmithViewModel = viewModel()) {
 
                         ExportShareCard(paletteSet = paletteSet)
 
-                        Spacer(modifier = Modifier.height(24.dp))
+                        Spacer(modifier = Modifier.height(72.dp))
                     }
                 }
 
@@ -310,7 +336,7 @@ fun HuesmithMainApp(viewModel: HuesmithViewModel = viewModel()) {
                             onToggleAccessibilityInspector = { viewModel.toggleAccessibilityInspector() }
                         )
 
-                        Spacer(modifier = Modifier.height(24.dp))
+                        Spacer(modifier = Modifier.height(72.dp))
                     }
                 }
 
@@ -341,6 +367,17 @@ fun HuesmithMainApp(viewModel: HuesmithViewModel = viewModel()) {
                     )
                 }
             }
+        }
+
+        // Manual / System Color Picker Dialog
+        if (showManualColorPicker) {
+            ManualColorPickerDialog(
+                initialColor = uiState.baseColor,
+                onColorSelected = { newCol ->
+                    viewModel.updateBaseColor(newCol)
+                },
+                onDismiss = { showManualColorPicker = false }
+            )
         }
 
         // Modal Color Detail Sheet

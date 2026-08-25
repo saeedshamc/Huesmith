@@ -15,6 +15,8 @@ data class RgbColor(val r: Int, val g: Int, val b: Int) {
     fun toComposeColor(): Color {
         return Color(r.coerceIn(0, 255), g.coerceIn(0, 255), b.coerceIn(0, 255))
     }
+
+    fun toHsl(): HslColor = HslColor.fromRgb(r, g, b)
 }
 
 data class HslColor(

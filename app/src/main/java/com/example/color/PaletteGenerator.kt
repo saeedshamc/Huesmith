@@ -334,6 +334,29 @@ object PaletteGenerator {
         """.trimIndent()
     }
 
+    fun exportTailwindConfig(colors: List<HslColor>, paletteName: String = "brand"): String {
+        val keys = listOf("base", "complementary", "accent", "neutral", "tonal")
+        val colorEntries = colors.mapIndexed { idx, col ->
+            val key = keys.getOrElse(idx) { "color${idx + 1}" }
+            "        $key: '${col.toHex()}',"
+        }.joinToString("\n")
+
+        return """
+            /** @type {import('tailwindcss').Config} */
+            module.exports = {
+              theme: {
+                extend: {
+                  colors: {
+                    $paletteName: {
+            $colorEntries
+                    },
+                  },
+                },
+              },
+            };
+        """.trimIndent()
+    }
+
     fun exportComposeCode(colors: List<HslColor>): String {
         val colorItems = colors.mapIndexed { idx, col ->
             "val Color${idx + 1} = Color(0xFF${col.toHex().removePrefix("#")})"
