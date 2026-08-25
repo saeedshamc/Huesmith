@@ -190,10 +190,14 @@ fun HuesmithMainApp(viewModel: HuesmithViewModel = viewModel()) {
                     ) {
                         BaseColorPickerCard(
                             baseColor = uiState.baseColor,
+                            selectedHarmony = uiState.selectedHarmony,
+                            isColorWheelMode = uiState.isColorWheelActive,
                             extractedColors = uiState.extractedImageColors,
                             isExtractingImage = uiState.isExtractingImage,
                             onColorChanged = { viewModel.updateBaseColor(it) },
                             onHexChanged = { viewModel.updateBaseHex(it) },
+                            onHarmonySelected = { viewModel.selectHarmony(it) },
+                            onToggleColorWheelMode = { viewModel.toggleColorWheelMode() },
                             onImageSelected = { bitmap -> viewModel.extractColorsFromBitmap(bitmap) }
                         )
 
@@ -238,9 +242,11 @@ fun HuesmithMainApp(viewModel: HuesmithViewModel = viewModel()) {
                         LiveMockupStudio(
                             paletteSet = paletteSet,
                             mockupType = uiState.mockupType,
+                            selectedCvdType = uiState.selectedCvdType,
                             isDarkModeTransformActive = uiState.isDarkModeTransformActive,
                             isAccessibilityInspectorActive = uiState.isAccessibilityInspectorActive,
                             onMockupTypeSelected = { viewModel.setMockupType(it) },
+                            onCvdTypeSelected = { viewModel.selectCvdType(it) },
                             onToggleAccessibilityInspector = { viewModel.toggleAccessibilityInspector() }
                         )
 

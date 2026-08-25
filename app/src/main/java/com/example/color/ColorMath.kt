@@ -207,3 +207,74 @@ object WcagUtils {
         return currentFg
     }
 }
+
+enum class ColorBlindnessType(
+    val title: String,
+    val description: String,
+    val shortName: String
+) {
+    NONE("Normal Vision", "Standard trichromatic perception", "Normal"),
+    PROTANOPIA("Protanopia", "Red-blind (Long-wavelength deficiency)", "Protanopia"),
+    DEUTERANOPIA("Deuteranopia", "Green-blind (Medium-wavelength deficiency)", "Deuteranopia"),
+    TRITANOPIA("Tritanopia", "Blue-blind (Short-wavelength deficiency)", "Tritanopia"),
+    ACHROMATOPSIA("Achromatopsia", "Total color blindness (Monochromatic grayscale)", "Achromatopsia")
+}
+
+object ColorBlindnessSimulator {
+    fun simulate(rgb: RgbColor, type: ColorBlindnessType): RgbColor {
+        if (type == ColorBlindnessType.NONE) return rgb
+        val r = rgb.r.toFloat()
+        val g = rgb.g.toFloat()
+        val b = rgb.b.toFloat()
+
+        val (simR, simG, simB) = when (type) {
+            ColorBlindnessType.PROTANOPIA -> Triple(
+                0.56667f * r + 0.43333f * g + 0.00000f * b,
+                0.55833f * r + 0.44167f * g + 0.00000f * b,
+                0.00000f * r + 0.24167f * g + 0.75833f * b
+            )
+            ColorBlindnessType.DEUTERANOPIA -> Triple(
+                0.62500f * r + 0.37500f * g + 0.00000f * b,
+                0.70000f * r + 0.30000f * g + 0.00000f * b,
+                0.00000f * r + 0.30000f * g + 0.70000f * b
+            )
+            ColorBlindnessType.TRITANOPIA -> Triple(
+                0.95000f * r + 0.05000f * g + 0.00000f * b,
+                0.00000f * r + 0.43333f * g + 0.56667f * b,
+                0.00000f * r + 0.47500f * g + 0.52500f * b
+            )
+            ColorBlindnessType.ACHROMATOPSIA -> {
+                val gray = 0.299f * r + 0.587f * g + 0.114f * b
+                Triple(gray, gray, gray)
+            }
+            ColorBlindnessType.NONE -> Triple(r, g, b)
+        }
+
+        return RgbColor(
+            simR.roundToInt().coerceIn(0, 255),
+            simG.roundToInt().coerceIn(0, 255),
+            simB.roundToInt().coerceIn(0, 255)
+        )
+    }
+
+    fun simulate(hsl: HslColor, type: ColorBlindnessType): HslColor {
+        if (type == ColorBlindnessType.NONE) return hsl
+        val rgb = hsl.toRgb()
+        val simRgb = simulate(rgb, type)
+        return HslColor.fromRgb(simRgb.r, simRgb.g, simRgb.b)
+    }
+}
+
+enum class ColorHarmonyAlgorithm(
+    val title: String,
+    val description: String,
+    val angles: List<Float>
+) {
+    COMPLEMENTARY("Complementary", "Exact 180° opposite hue for bold dynamic contrast.", listOf(0f, 180f)),
+    ANALOGOUS("Analogous", "Adjacent hues ±30° for cohesive, serene warmth.", listOf(0f, -30f, 30f)),
+    TRIADIC("Triadic", "Equilateral 120° triangle across the color wheel.", listOf(0f, 120f, 240f)),
+    SPLIT_COMPLEMENTARY("Split-Complementary", "Base with 150° and 210° accents for balanced vibrancy.", listOf(0f, 150f, 210f)),
+    TETRADIC("Tetradic / Square", "Four harmonious hues spaced at 90° intervals.", listOf(0f, 90f, 180f, 270f)),
+    MONOCHROMATIC("Monochromatic", "Pure tonal variations across the same base hue.", listOf(0f))
+}
+

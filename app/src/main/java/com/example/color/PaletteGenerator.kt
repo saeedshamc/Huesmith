@@ -17,6 +17,8 @@ enum class DomainProfile(
 data class GeneratedPaletteSet(
     val baseColor: HslColor,
     val domain: DomainProfile,
+    val selectedHarmony: ColorHarmonyAlgorithm = ColorHarmonyAlgorithm.COMPLEMENTARY,
+    val harmonyPalette: List<HslColor>,
     val exactComplementary: List<HslColor>,
     val domainAdjustedComplementary: List<HslColor>,
     val analogousTriad: List<HslColor>,
@@ -28,11 +30,84 @@ data class GeneratedPaletteSet(
 
 object PaletteGenerator {
 
+    fun generateHarmonyPalette(
+        baseColor: HslColor,
+        harmony: ColorHarmonyAlgorithm,
+        domain: DomainProfile
+    ): List<HslColor> {
+        val rawColors = when (harmony) {
+            ColorHarmonyAlgorithm.COMPLEMENTARY -> {
+                val comp = baseColor.rotateHue(180f)
+                val (adjustedComp, _) = applyDomainRuleToComplement(baseColor, comp, domain)
+                listOf(
+                    baseColor,
+                    adjustedComp,
+                    baseColor.rotateHue(30f).adjustLightness(0.15f),
+                    adjustedComp.adjustLightness(-0.20f)
+                )
+            }
+            ColorHarmonyAlgorithm.ANALOGOUS -> {
+                listOf(
+                    baseColor,
+                    baseColor.rotateHue(-30f),
+                    baseColor.rotateHue(30f),
+                    calculateNeutralCompanion(baseColor)
+                )
+            }
+            ColorHarmonyAlgorithm.TRIADIC -> {
+                listOf(
+                    baseColor,
+                    baseColor.rotateHue(120f),
+                    baseColor.rotateHue(240f),
+                    baseColor.rotateHue(120f).adjustLightness(-0.25f)
+                )
+            }
+            ColorHarmonyAlgorithm.SPLIT_COMPLEMENTARY -> {
+                listOf(
+                    baseColor,
+                    baseColor.rotateHue(150f),
+                    baseColor.rotateHue(210f),
+                    calculateNeutralCompanion(baseColor)
+                )
+            }
+            ColorHarmonyAlgorithm.TETRADIC -> {
+                listOf(
+                    baseColor,
+                    baseColor.rotateHue(90f),
+                    baseColor.rotateHue(180f),
+                    baseColor.rotateHue(270f)
+                )
+            }
+            ColorHarmonyAlgorithm.MONOCHROMATIC -> {
+                listOf(
+                    baseColor.adjustLightness(0.18f).adjustSaturation(-0.1f),
+                    baseColor,
+                    baseColor.adjustLightness(-0.15f).adjustSaturation(0.08f),
+                    baseColor.adjustLightness(-0.32f)
+                )
+            }
+        }
+
+        if (domain == DomainProfile.BRANDING) {
+            return rawColors.mapIndexed { idx, col ->
+                if (idx == 0) col
+                else WcagUtils.ensureAaContrast(fg = col, bg = baseColor, minRatio = 4.5f)
+            }
+        }
+        return rawColors
+    }
+
     /**
-     * Core function to generate all 4 companion palettes + gradient + tonal variants
-     * using domain-aware deterministic color math.
+     * Core function to generate all companion palettes + gradient + tonal variants
+     * using domain-aware deterministic color math and active harmony algorithm.
      */
-    fun generatePalettes(baseColor: HslColor, domain: DomainProfile): GeneratedPaletteSet {
+    fun generatePalettes(
+        baseColor: HslColor,
+        domain: DomainProfile,
+        harmony: ColorHarmonyAlgorithm = ColorHarmonyAlgorithm.COMPLEMENTARY
+    ): GeneratedPaletteSet {
+        val harmonyColors = generateHarmonyPalette(baseColor, harmony, domain)
+
         // 1. Exact Complementary
         val exactComplement = baseColor.rotateHue(180f)
         val exactPalette = listOf(
@@ -95,6 +170,8 @@ object PaletteGenerator {
         return GeneratedPaletteSet(
             baseColor = baseColor,
             domain = domain,
+            selectedHarmony = harmony,
+            harmonyPalette = harmonyColors,
             exactComplementary = exactPalette,
             domainAdjustedComplementary = domainPalette,
             analogousTriad = analogousPalette,

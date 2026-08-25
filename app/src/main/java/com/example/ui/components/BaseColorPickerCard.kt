@@ -25,13 +25,18 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AddPhotoAlternate
 import androidx.compose.material.icons.filled.ColorLens
 import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
@@ -52,6 +57,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.color.ColorHarmonyAlgorithm
 import com.example.color.HslColor
 
 val PresetSwatches = listOf(
@@ -68,10 +74,14 @@ val PresetSwatches = listOf(
 @Composable
 fun BaseColorPickerCard(
     baseColor: HslColor,
+    selectedHarmony: ColorHarmonyAlgorithm,
+    isColorWheelMode: Boolean,
     extractedColors: List<HslColor>,
     isExtractingImage: Boolean,
     onColorChanged: (HslColor) -> Unit,
     onHexChanged: (String) -> Unit,
+    onHarmonySelected: (ColorHarmonyAlgorithm) -> Unit,
+    onToggleColorWheelMode: () -> Unit,
     onImageSelected: (android.graphics.Bitmap) -> Unit
 ) {
     val context = LocalContext.current
@@ -122,74 +132,225 @@ fun BaseColorPickerCard(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "Base Anchor Color",
+                        text = "Base Anchor & Harmony",
                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                         color = MaterialTheme.colorScheme.onSurface
                     )
                 }
 
-                Button(
-                    onClick = { imagePickerLauncher.launch("image/*") },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant
-                    ),
-                    shape = RoundedCornerShape(10.dp),
-                    modifier = Modifier.testTag("image_picker_button")
-                ) {
-                    if (isExtractingImage) {
-                        CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
-                    } else {
-                        Icon(imageVector = Icons.Default.AddPhotoAlternate, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("Pick Image", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    OutlinedButton(
+                        onClick = onToggleColorWheelMode,
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier.testTag("toggle_wheel_mode_button")
+                    ) {
+                        Icon(
+                            imageVector = if (isColorWheelMode) Icons.Default.Tune else Icons.Default.ColorLens,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(if (isColorWheelMode) "Sliders" else "Wheel", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    }
+
+                    Spacer(modifier = Modifier.width(6.dp))
+
+                    Button(
+                        onClick = { imagePickerLauncher.launch("image/*") },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                        ),
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier.testTag("image_picker_button")
+                    ) {
+                        if (isExtractingImage) {
+                            CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                        } else {
+                            Icon(imageVector = Icons.Default.AddPhotoAlternate, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Image", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        }
                     }
                 }
             }
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Color Display Box + Hex Field
+            // Harmony Algorithm Presets Selector Chips
+            Text(
+                text = "Harmony Algorithm Preset",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(modifier = Modifier.height(6.dp))
+
             Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                // Live Color Swatch Box
-                Box(
-                    modifier = Modifier
-                        .size(64.dp)
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(baseColor.toComposeColor())
-                        .border(1.5.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f), RoundedCornerShape(16.dp))
-                )
-
-                Spacer(modifier = Modifier.width(16.dp))
-
-                // Hex Input Field
-                OutlinedTextField(
-                    value = hexInput,
-                    onValueChange = { input ->
-                        hexInput = input
-                        if (input.length == 7 || input.length == 6) {
-                            onHexChanged(input)
-                        }
-                    },
-                    label = { Text("HEX Code") },
-                    singleLine = true,
-                    textStyle = MaterialTheme.typography.bodyLarge.copy(
-                        fontFamily = FontFamily.Monospace,
-                        fontWeight = FontWeight.Bold
-                    ),
-                    modifier = Modifier
-                        .weight(1f)
-                        .testTag("hex_input_field")
-                )
+                ColorHarmonyAlgorithm.values().forEach { harmony ->
+                    val isSelected = harmony == selectedHarmony
+                    FilterChip(
+                        selected = isSelected,
+                        onClick = { onHarmonySelected(harmony) },
+                        label = {
+                            Text(
+                                text = harmony.title,
+                                fontSize = 12.sp,
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
+                            )
+                        },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                            selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                        ),
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier.testTag("harmony_chip_${harmony.name.lowercase()}")
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(16.dp))
 
+            if (isColorWheelMode) {
+                // Interactive Visual Color Wheel
+                InteractiveColorWheel(
+                    baseColor = baseColor,
+                    harmony = selectedHarmony,
+                    onColorChanged = onColorChanged
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Lightness Precision Slider under Color Wheel
+                Column {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text("Lightness (L)", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("${(baseColor.lightness * 100).toInt()}%", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                    }
+                    Slider(
+                        value = baseColor.lightness,
+                        onValueChange = { l -> onColorChanged(baseColor.copy(lightness = l)) },
+                        valueRange = 0.05f..0.95f,
+                        colors = SliderDefaults.colors(thumbColor = baseColor.toComposeColor()),
+                        modifier = Modifier.testTag("wheel_lightness_slider")
+                    )
+                }
+            } else {
+                // Precision Sliders & Hex Mode
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(64.dp)
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(baseColor.toComposeColor())
+                            .border(1.5.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f), RoundedCornerShape(16.dp))
+                    )
+
+                    Spacer(modifier = Modifier.width(16.dp))
+
+                    OutlinedTextField(
+                        value = hexInput,
+                        onValueChange = { input ->
+                            hexInput = input
+                            if (input.length == 7 || input.length == 6) {
+                                onHexChanged(input)
+                            }
+                        },
+                        label = { Text("HEX Code") },
+                        singleLine = true,
+                        textStyle = MaterialTheme.typography.bodyLarge.copy(
+                            fontFamily = FontFamily.Monospace,
+                            fontWeight = FontWeight.Bold
+                        ),
+                        modifier = Modifier
+                            .weight(1f)
+                            .testTag("hex_input_field")
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // 1. Hue Slider (0 to 360)
+                Column {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text("Hue (H)", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("${baseColor.hue.toInt()}°", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                    }
+                    val rainbowBrush = Brush.horizontalGradient(
+                        colors = listOf(
+                            Color.Red, Color.Yellow, Color.Green, Color.Cyan, Color.Blue, Color.Magenta, Color.Red
+                        )
+                    )
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(8.dp)
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(rainbowBrush)
+                    )
+                    Slider(
+                        value = baseColor.hue,
+                        onValueChange = { h -> onColorChanged(baseColor.copy(hue = h)) },
+                        valueRange = 0f..360f,
+                        colors = SliderDefaults.colors(thumbColor = baseColor.toComposeColor()),
+                        modifier = Modifier.testTag("hue_slider")
+                    )
+                }
+
+                // 2. Saturation Slider (0 to 100%)
+                Column {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text("Saturation (S)", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("${(baseColor.saturation * 100).toInt()}%", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                    }
+                    Slider(
+                        value = baseColor.saturation,
+                        onValueChange = { s -> onColorChanged(baseColor.copy(saturation = s)) },
+                        valueRange = 0f..1f,
+                        colors = SliderDefaults.colors(thumbColor = baseColor.toComposeColor()),
+                        modifier = Modifier.testTag("saturation_slider")
+                    )
+                }
+
+                // 3. Lightness Slider (0 to 100%)
+                Column {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text("Lightness (L)", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("${(baseColor.lightness * 100).toInt()}%", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                    }
+                    Slider(
+                        value = baseColor.lightness,
+                        onValueChange = { l -> onColorChanged(baseColor.copy(lightness = l)) },
+                        valueRange = 0f..1f,
+                        colors = SliderDefaults.colors(thumbColor = baseColor.toComposeColor()),
+                        modifier = Modifier.testTag("lightness_slider")
+                    )
+                }
+            }
+
             // Extracted Image Colors Strip (if any)
             if (extractedColors.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(16.dp))
                 Text(
                     text = "Extracted Image Dominant Colors (K-Means k=5):",
                     style = MaterialTheme.typography.labelSmall,
@@ -218,74 +379,6 @@ fun BaseColorPickerCard(
                         )
                     }
                 }
-                Spacer(modifier = Modifier.height(16.dp))
-            }
-
-            // HSL Sliders
-            // 1. Hue Slider (0 to 360)
-            Column {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text("Hue (H)", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text("${baseColor.hue.toInt()}°", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
-                }
-                val rainbowBrush = Brush.horizontalGradient(
-                    colors = listOf(
-                        Color.Red, Color.Yellow, Color.Green, Color.Cyan, Color.Blue, Color.Magenta, Color.Red
-                    )
-                )
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(8.dp)
-                        .clip(RoundedCornerShape(4.dp))
-                        .background(rainbowBrush)
-                )
-                Slider(
-                    value = baseColor.hue,
-                    onValueChange = { h -> onColorChanged(baseColor.copy(hue = h)) },
-                    valueRange = 0f..360f,
-                    colors = SliderDefaults.colors(thumbColor = baseColor.toComposeColor()),
-                    modifier = Modifier.testTag("hue_slider")
-                )
-            }
-
-            // 2. Saturation Slider (0 to 100%)
-            Column {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text("Saturation (S)", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text("${(baseColor.saturation * 100).toInt()}%", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
-                }
-                Slider(
-                    value = baseColor.saturation,
-                    onValueChange = { s -> onColorChanged(baseColor.copy(saturation = s)) },
-                    valueRange = 0f..1f,
-                    colors = SliderDefaults.colors(thumbColor = baseColor.toComposeColor()),
-                    modifier = Modifier.testTag("saturation_slider")
-                )
-            }
-
-            // 3. Lightness Slider (0 to 100%)
-            Column {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text("Lightness (L)", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text("${(baseColor.lightness * 100).toInt()}%", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
-                }
-                Slider(
-                    value = baseColor.lightness,
-                    onValueChange = { l -> onColorChanged(baseColor.copy(lightness = l)) },
-                    valueRange = 0f..1f,
-                    colors = SliderDefaults.colors(thumbColor = baseColor.toComposeColor()),
-                    modifier = Modifier.testTag("lightness_slider")
-                )
             }
 
             Spacer(modifier = Modifier.height(12.dp))
@@ -329,3 +422,4 @@ fun BaseColorPickerCard(
         }
     }
 }
+

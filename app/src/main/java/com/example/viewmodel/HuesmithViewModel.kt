@@ -4,6 +4,8 @@ import android.app.Application
 import android.graphics.Bitmap
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.color.ColorBlindnessType
+import com.example.color.ColorHarmonyAlgorithm
 import com.example.color.DomainProfile
 import com.example.color.GeneratedPaletteSet
 import com.example.color.HslColor
@@ -30,9 +32,12 @@ enum class MockupType(val label: String, val iconName: String) {
 data class HuesmithUiState(
     val baseColor: HslColor = HslColor(14f, 1.0f, 0.57f), // Warm Terracotta default
     val selectedDomain: DomainProfile = DomainProfile.BRANDING,
+    val selectedHarmony: ColorHarmonyAlgorithm = ColorHarmonyAlgorithm.COMPLEMENTARY,
+    val selectedCvdType: ColorBlindnessType = ColorBlindnessType.NONE,
     val isDarkModeTransformActive: Boolean = false,
     val mockupType: MockupType = MockupType.MOBILE_APP,
     val isAccessibilityInspectorActive: Boolean = false,
+    val isColorWheelActive: Boolean = true,
     val lockedColorIndices: Set<Int> = emptySet(),
     val extractedImageColors: List<HslColor> = emptyList(),
     val isExtractingImage: Boolean = false,
@@ -77,13 +82,14 @@ class HuesmithViewModel(application: Application) : AndroidViewModel(application
         _uiState,
         _uiState
     ) { state, _ ->
-        PaletteGenerator.generatePalettes(state.baseColor, state.selectedDomain)
+        PaletteGenerator.generatePalettes(state.baseColor, state.selectedDomain, state.selectedHarmony)
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = PaletteGenerator.generatePalettes(
             HslColor(14f, 1.0f, 0.57f),
-            DomainProfile.BRANDING
+            DomainProfile.BRANDING,
+            ColorHarmonyAlgorithm.COMPLEMENTARY
         )
     )
 
@@ -98,6 +104,25 @@ class HuesmithViewModel(application: Application) : AndroidViewModel(application
 
     fun selectDomain(domain: DomainProfile) {
         _uiState.value = _uiState.value.copy(selectedDomain = domain)
+    }
+
+    fun selectHarmony(harmony: ColorHarmonyAlgorithm) {
+        _uiState.value = _uiState.value.copy(
+            selectedHarmony = harmony,
+            userNotification = "Harmony changed to ${harmony.title}"
+        )
+    }
+
+    fun selectCvdType(cvd: ColorBlindnessType) {
+        _uiState.value = _uiState.value.copy(
+            selectedCvdType = cvd,
+            userNotification = if (cvd == ColorBlindnessType.NONE) "Color blindness simulation cleared" else "Simulating ${cvd.title} (${cvd.shortName})"
+        )
+    }
+
+    fun toggleColorWheelMode() {
+        val current = _uiState.value.isColorWheelActive
+        _uiState.value = _uiState.value.copy(isColorWheelActive = !current)
     }
 
     fun toggleDarkModeTransform() {

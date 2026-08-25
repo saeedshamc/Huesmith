@@ -52,17 +52,24 @@ import com.example.viewmodel.MockupType
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.material.icons.filled.RemoveRedEye
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.IconButton
+import com.example.color.ColorBlindnessSimulator
+import com.example.color.ColorBlindnessType
 
 @Composable
 fun LiveMockupStudio(
     paletteSet: GeneratedPaletteSet,
     mockupType: MockupType,
+    selectedCvdType: ColorBlindnessType = ColorBlindnessType.NONE,
     isDarkModeTransformActive: Boolean,
     isAccessibilityInspectorActive: Boolean,
     onMockupTypeSelected: (MockupType) -> Unit,
+    onCvdTypeSelected: (ColorBlindnessType) -> Unit,
     onToggleAccessibilityInspector: () -> Unit
 ) {
     val activePalette = if (isDarkModeTransformActive) {
@@ -71,10 +78,16 @@ fun LiveMockupStudio(
         paletteSet.domainAdjustedComplementary
     }
 
-    val primaryHsl = activePalette.getOrElse(0) { paletteSet.baseColor }
-    val secondaryHsl = activePalette.getOrElse(1) { paletteSet.baseColor.rotateHue(180f) }
-    val accentHsl = activePalette.getOrElse(2) { paletteSet.baseColor.rotateHue(30f) }
-    val bgHsl = activePalette.getOrElse(3) { HslColor(0f, 0f, 0.95f) }
+    val rawPrimaryHsl = activePalette.getOrElse(0) { paletteSet.baseColor }
+    val rawSecondaryHsl = activePalette.getOrElse(1) { paletteSet.baseColor.rotateHue(180f) }
+    val rawAccentHsl = activePalette.getOrElse(2) { paletteSet.baseColor.rotateHue(30f) }
+    val rawBgHsl = activePalette.getOrElse(3) { HslColor(0f, 0f, 0.95f) }
+
+    // Apply Color Blindness Simulation Filter if active
+    val primaryHsl = ColorBlindnessSimulator.simulate(rawPrimaryHsl, selectedCvdType)
+    val secondaryHsl = ColorBlindnessSimulator.simulate(rawSecondaryHsl, selectedCvdType)
+    val accentHsl = ColorBlindnessSimulator.simulate(rawAccentHsl, selectedCvdType)
+    val bgHsl = ColorBlindnessSimulator.simulate(rawBgHsl, selectedCvdType)
 
     // Color Interpolation Animations
     val animatedPrimary by animateColorAsState(primaryHsl.toComposeColor(), animationSpec = tween(400), label = "cPrimary")
@@ -131,6 +144,72 @@ fun LiveMockupStudio(
                         color = if (c1VsBg >= 4.5f) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onErrorContainer,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        // Color Blindness Simulation Filter Bar
+        Text(
+            text = "Color Vision Deficiency (CVD) Simulation Filter:",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.primary,
+            fontWeight = FontWeight.Bold
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            ColorBlindnessType.values().forEach { cvd ->
+                val isSelected = cvd == selectedCvdType
+                FilterChip(
+                    selected = isSelected,
+                    onClick = { onCvdTypeSelected(cvd) },
+                    label = {
+                        Text(
+                            text = cvd.shortName,
+                            fontSize = 11.sp,
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                        )
+                    },
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                        selectedLabelColor = MaterialTheme.colorScheme.onTertiaryContainer
+                    ),
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier.testTag("cvd_chip_${cvd.name.lowercase()}")
+                )
+            }
+        }
+
+        if (selectedCvdType != ColorBlindnessType.NONE) {
+            Spacer(modifier = Modifier.height(6.dp))
+            Surface(
+                color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.5f),
+                shape = RoundedCornerShape(8.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.RemoveRedEye,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.tertiary,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "Simulating ${selectedCvdType.title}: ${selectedCvdType.description}",
+                        style = MaterialTheme.typography.bodySmall,
+                        fontSize = 11.sp,
+                        color = MaterialTheme.colorScheme.onTertiaryContainer
                     )
                 }
             }

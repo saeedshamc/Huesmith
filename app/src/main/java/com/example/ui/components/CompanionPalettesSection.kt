@@ -79,6 +79,7 @@ fun CompanionPalettesSection(
 
     val activeExact = if (isDarkModeTransformActive) PaletteGenerator.transformToDarkMode(paletteSet.exactComplementary) else paletteSet.exactComplementary
     val activeDomain = if (isDarkModeTransformActive) PaletteGenerator.transformToDarkMode(paletteSet.domainAdjustedComplementary) else paletteSet.domainAdjustedComplementary
+    val activeHarmony = if (isDarkModeTransformActive) PaletteGenerator.transformToDarkMode(paletteSet.harmonyPalette) else paletteSet.harmonyPalette
     val activeAnalogous = if (isDarkModeTransformActive) PaletteGenerator.transformToDarkMode(paletteSet.analogousTriad) else paletteSet.analogousTriad
     val activeNeutral = if (isDarkModeTransformActive) PaletteGenerator.transformToDarkMode(paletteSet.neutralCompanion) else paletteSet.neutralCompanion
     val activeTonal = if (isDarkModeTransformActive) PaletteGenerator.transformToDarkMode(paletteSet.tonalVariants) else paletteSet.tonalVariants
@@ -121,6 +122,26 @@ fun CompanionPalettesSection(
 
         Spacer(modifier = Modifier.height(16.dp))
 
+        // Palette 0: Active Harmony Algorithm Preset
+        PaletteCard(
+            title = "${paletteSet.selectedHarmony.title} Preset",
+            badgeText = "Harmony Preset",
+            noteText = paletteSet.selectedHarmony.description,
+            colors = activeHarmony,
+            lockedIndices = lockedIndices,
+            onToggleLock = onToggleLock,
+            onInspectColor = onInspectColor,
+            onSaveClick = { saveDialogPalette = "${paletteSet.selectedHarmony.title} Preset" to activeHarmony },
+            onCopyClick = {
+                val code = PaletteGenerator.exportCssVariables(activeHarmony, paletteSet.selectedHarmony.name.lowercase())
+                copyToClipboard(context, code)
+            },
+            onSharePngClick = { onSharePng("${paletteSet.selectedHarmony.title} Preset", activeHarmony) },
+            isFeatured = true
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
         // Palette 1: Domain-Adjusted Complementary (Featured First)
         PaletteCard(
             title = "Domain-Adjusted Complementary",
@@ -135,8 +156,7 @@ fun CompanionPalettesSection(
                 val code = PaletteGenerator.exportCssVariables(activeDomain, "domain")
                 copyToClipboard(context, code)
             },
-            onSharePngClick = { onSharePng("Domain-Adjusted ${paletteSet.domain.title}", activeDomain) },
-            isFeatured = true
+            onSharePngClick = { onSharePng("Domain-Adjusted ${paletteSet.domain.title}", activeDomain) }
         )
 
         Spacer(modifier = Modifier.height(16.dp))
