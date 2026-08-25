@@ -1,12 +1,17 @@
 package com.example
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
@@ -15,12 +20,16 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AssignmentTurnedIn
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.Build
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.Gradient
@@ -35,6 +44,7 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -44,8 +54,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -53,27 +66,30 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.color.HslColor
+import com.example.color.PngExporter
 import com.example.ui.components.BaseColorPickerCard
 import com.example.ui.components.ColorDetailSheet
 import com.example.ui.components.CompanionPalettesSection
+import com.example.ui.components.ContrastMatrixCard
 import com.example.ui.components.DomainSelectorBar
 import com.example.ui.components.ExportShareCard
 import com.example.ui.components.GradientAndToolsTab
 import com.example.ui.components.LiveMockupStudio
 import com.example.ui.components.SavedPalettesTab
+import com.example.ui.components.SyncModeCard
 import com.example.ui.theme.HuesmithTheme
 import com.example.viewmodel.HuesmithViewModel
-import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.launch
-import com.example.color.PngExporter
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            HuesmithTheme {
-                HuesmithMainApp()
+            val viewModel: HuesmithViewModel = viewModel()
+            val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+            HuesmithTheme(darkTheme = uiState.isDarkModeTransformActive) {
+                HuesmithMainApp(viewModel = viewModel)
             }
         }
     }
@@ -89,8 +105,19 @@ fun HuesmithMainApp(viewModel: HuesmithViewModel = viewModel()) {
     var currentTab by remember { mutableIntStateOf(0) }
     var inspectedColor by remember { mutableStateOf<HslColor?>(null) }
     val snackbarHostState = remember { SnackbarHostState() }
-    val context = androidx.compose.ui.platform.LocalContext.current
+    val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
+
+    // Central Color Selection / Click Handler respecting Auto-Copy Hex setting
+    val handleColorSelect: (HslColor) -> Unit = { color ->
+        if (uiState.autoCopyHexOnSelect) {
+            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+            val clip = ClipData.newPlainText("Huesmith Hex Code", color.toHex())
+            clipboard.setPrimaryClip(clip)
+            Toast.makeText(context, "Copied ${color.toHex()} to clipboard!", Toast.LENGTH_SHORT).show()
+        }
+        inspectedColor = color
+    }
 
     LaunchedEffect(uiState.userNotification) {
         uiState.userNotification?.let { msg ->
@@ -117,6 +144,19 @@ fun HuesmithMainApp(viewModel: HuesmithViewModel = viewModel()) {
                     }
                 },
                 actions = {
+                    // Auto-Copy Hex Toggle in Top App Bar
+                    IconButton(
+                        onClick = { viewModel.toggleAutoCopyHex() },
+                        modifier = Modifier.testTag("top_bar_auto_copy_toggle")
+                    ) {
+                        Icon(
+                            imageVector = if (uiState.autoCopyHexOnSelect) Icons.Default.AssignmentTurnedIn else Icons.Default.ContentCopy,
+                            contentDescription = "Toggle Auto-Copy Hex",
+                            tint = if (uiState.autoCopyHexOnSelect) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                    // Dark Mode Transform Toggle
                     IconButton(
                         onClick = { viewModel.toggleDarkModeTransform() },
                         modifier = Modifier.testTag("top_bar_dark_mode_toggle")
@@ -201,6 +241,19 @@ fun HuesmithMainApp(viewModel: HuesmithViewModel = viewModel()) {
                             onImageSelected = { bitmap -> viewModel.extractColorsFromBitmap(bitmap) }
                         )
 
+                        // Harmonic Sync Mode Controller Card
+                        SyncModeCard(
+                            isSyncActive = uiState.isSyncModeActive,
+                            syncedIndices = uiState.syncedColorIndices,
+                            currentColors = paletteSet.domainAdjustedComplementary,
+                            onToggleSyncMode = { viewModel.toggleSyncMode() },
+                            onToggleSyncIndex = { idx -> viewModel.toggleSyncIndex(idx) },
+                            onSyncAll = { viewModel.syncAllIndices() },
+                            onApplySyncAdjustments = { dH, dS, dL ->
+                                viewModel.applySyncAdjustments(dH, dS, dL)
+                            }
+                        )
+
                         DomainSelectorBar(
                             selectedDomain = uiState.selectedDomain,
                             onDomainSelected = { viewModel.selectDomain(it) }
@@ -212,7 +265,7 @@ fun HuesmithMainApp(viewModel: HuesmithViewModel = viewModel()) {
                             lockedIndices = uiState.lockedColorIndices,
                             onToggleLock = { idx -> viewModel.toggleColorLock(idx) },
                             onShuffle = { viewModel.shuffleUnlockedColors() },
-                            onInspectColor = { inspectedColor = it },
+                            onInspectColor = handleColorSelect,
                             onSharePng = { title, colors ->
                                 coroutineScope.launch {
                                     val uri = PngExporter.generatePaletteCardPng(context, title, uiState.selectedDomain.title, colors)
@@ -222,6 +275,13 @@ fun HuesmithMainApp(viewModel: HuesmithViewModel = viewModel()) {
                             onSavePalette = { title, type, colors, notes ->
                                 viewModel.savePalette(title, type, colors, notes)
                             }
+                        )
+
+                        // Pairwise WCAG Contrast Matrix Component
+                        ContrastMatrixCard(
+                            colors = paletteSet.domainAdjustedComplementary,
+                            paletteTitle = "${paletteSet.domain.title} Palette",
+                            onColorClick = handleColorSelect
                         )
 
                         ExportShareCard(paletteSet = paletteSet)
@@ -260,7 +320,7 @@ fun HuesmithMainApp(viewModel: HuesmithViewModel = viewModel()) {
                         paletteSet = paletteSet,
                         isDarkModeActive = uiState.isDarkModeTransformActive,
                         onToggleDarkMode = { viewModel.toggleDarkModeTransform() },
-                        onInspectColor = { inspectedColor = it }
+                        onInspectColor = handleColorSelect
                     )
                 }
 

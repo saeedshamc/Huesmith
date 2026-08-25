@@ -38,6 +38,9 @@ data class HuesmithUiState(
     val mockupType: MockupType = MockupType.MOBILE_APP,
     val isAccessibilityInspectorActive: Boolean = false,
     val isColorWheelActive: Boolean = true,
+    val autoCopyHexOnSelect: Boolean = false,
+    val isSyncModeActive: Boolean = false,
+    val syncedColorIndices: Set<Int> = setOf(0, 1, 2, 3, 4),
     val lockedColorIndices: Set<Int> = emptySet(),
     val extractedImageColors: List<HslColor> = emptyList(),
     val isExtractingImage: Boolean = false,
@@ -231,6 +234,47 @@ class HuesmithViewModel(application: Application) : AndroidViewModel(application
 
     fun setDomainFilter(domain: String?) {
         _uiState.value = _uiState.value.copy(domainFilter = domain)
+    }
+
+    fun toggleAutoCopyHex() {
+        val current = _uiState.value.autoCopyHexOnSelect
+        _uiState.value = _uiState.value.copy(
+            autoCopyHexOnSelect = !current,
+            userNotification = if (!current) "Auto-copy Hex enabled: swatches will copy directly on click" else "Auto-copy Hex disabled"
+        )
+    }
+
+    fun toggleSyncMode() {
+        val current = _uiState.value.isSyncModeActive
+        _uiState.value = _uiState.value.copy(
+            isSyncModeActive = !current,
+            userNotification = if (!current) "Sync Mode active: linked colors adjust simultaneously" else "Sync Mode deactivated"
+        )
+    }
+
+    fun toggleSyncIndex(index: Int) {
+        val current = _uiState.value.syncedColorIndices.toMutableSet()
+        if (current.contains(index)) {
+            current.remove(index)
+        } else {
+            current.add(index)
+        }
+        _uiState.value = _uiState.value.copy(syncedColorIndices = current)
+    }
+
+    fun syncAllIndices() {
+        _uiState.value = _uiState.value.copy(syncedColorIndices = setOf(0, 1, 2, 3, 4))
+    }
+
+    fun applySyncAdjustments(deltaHue: Float, deltaSat: Float, deltaLight: Float) {
+        val currentBase = _uiState.value.baseColor
+        val newHue = (currentBase.hue + deltaHue + 360f) % 360f
+        val newSat = (currentBase.saturation + deltaSat).coerceIn(0.05f, 1.0f)
+        val newLight = (currentBase.lightness + deltaLight).coerceIn(0.05f, 0.95f)
+
+        _uiState.value = _uiState.value.copy(
+            baseColor = HslColor(newHue, newSat, newLight)
+        )
     }
 
     fun clearNotification() {
