@@ -22,6 +22,10 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+
 enum class MockupType(val label: String, val iconName: String) {
     MOBILE_APP("Mobile App Screen", "Phone"),
     BRAND_CARD("Brand Identity Card", "Badge"),
@@ -67,9 +71,24 @@ class HuesmithViewModel(application: Application) : AndroidViewModel(application
         _uiState
     ) { palettes, state ->
         palettes.filter { palette ->
-            val matchesSearch = state.searchQuery.isEmpty() ||
-                    palette.title.contains(state.searchQuery, ignoreCase = true) ||
-                    palette.colorsHex.contains(state.searchQuery, ignoreCase = true)
+            val query = state.searchQuery.trim()
+            val matchesSearch = if (query.isEmpty()) {
+                true
+            } else {
+                val matchesTitle = palette.title.contains(query, ignoreCase = true)
+                val matchesHex = palette.colorsHex.contains(query, ignoreCase = true) ||
+                        palette.colorsHex.replace("#", "").contains(query.replace("#", ""), ignoreCase = true)
+                val matchesNotes = palette.notes.contains(query, ignoreCase = true)
+                val matchesPaletteType = palette.paletteType.contains(query, ignoreCase = true)
+
+                val dateObj = Date(palette.timestamp)
+                val matchesDate1 = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()).format(dateObj).contains(query, ignoreCase = true)
+                val matchesDate2 = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(dateObj).contains(query, ignoreCase = true)
+                val matchesDate3 = SimpleDateFormat("MMMM d, yyyy", Locale.getDefault()).format(dateObj).contains(query, ignoreCase = true)
+                val matchesDate4 = SimpleDateFormat("dd MMM", Locale.getDefault()).format(dateObj).contains(query, ignoreCase = true)
+
+                matchesTitle || matchesHex || matchesNotes || matchesPaletteType || matchesDate1 || matchesDate2 || matchesDate3 || matchesDate4
+            }
             val matchesDomain = state.domainFilter.isNullOrEmpty() ||
                     palette.domain.equals(state.domainFilter, ignoreCase = true)
             matchesSearch && matchesDomain

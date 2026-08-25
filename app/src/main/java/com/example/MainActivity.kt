@@ -75,6 +75,7 @@ import com.example.ui.components.BaseColorPickerCard
 import com.example.ui.components.ColorDetailSheet
 import com.example.ui.components.CompanionPalettesSection
 import com.example.ui.components.ContrastMatrixCard
+import com.example.ui.components.CvdQuickAccessCard
 import com.example.ui.components.DomainSelectorBar
 import com.example.ui.components.ExportShareCard
 import com.example.ui.components.GradientAndToolsTab
@@ -283,6 +284,13 @@ fun HuesmithMainApp(viewModel: HuesmithViewModel = viewModel()) {
                         DomainSelectorBar(
                             selectedDomain = uiState.selectedDomain,
                             onDomainSelected = { viewModel.selectDomain(it) }
+                        )
+
+                        // Quick-Access CVD Simulation Toggle Bar for on-the-fly contrast verification
+                        CvdQuickAccessCard(
+                            selectedCvdType = uiState.selectedCvdType,
+                            previewColors = paletteSet.domainAdjustedComplementary,
+                            onCvdSelected = { viewModel.selectCvdType(it) }
                         )
 
                         CompanionPalettesSection(

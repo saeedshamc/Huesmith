@@ -110,8 +110,15 @@ fun SavedPalettesTab(
             OutlinedTextField(
                 value = searchQuery,
                 onValueChange = onSearchQueryChanged,
-                placeholder = { Text("Search saved palettes...") },
-                leadingIcon = { Icon(imageVector = Icons.Default.Search, contentDescription = null) },
+                placeholder = { Text("Search by hex, name, or date (e.g. Aug 25)...", fontSize = 12.sp) },
+                leadingIcon = { Icon(imageVector = Icons.Default.Search, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+                trailingIcon = {
+                    if (searchQuery.isNotEmpty()) {
+                        IconButton(onClick = { onSearchQueryChanged("") }) {
+                            Icon(imageVector = Icons.Default.Close, contentDescription = "Clear Search", modifier = Modifier.size(18.dp))
+                        }
+                    }
+                },
                 singleLine = true,
                 shape = RoundedCornerShape(12.dp),
                 modifier = Modifier
@@ -141,29 +148,49 @@ fun SavedPalettesTab(
             }
         }
 
-        Spacer(modifier = Modifier.height(10.dp))
+        Spacer(modifier = Modifier.height(8.dp))
 
-        // Domain Filter Chips
-        val domains = listOf("All", "Branding", "Fashion", "Interior / Decor", "Nature", "Industrial / Freestyle")
+        // Quick Filter Chips (Date Shortcuts & Domain Profiles)
+        val todayStr = SimpleDateFormat("MMM dd", Locale.getDefault()).format(Date())
+        val quickFilters = listOf(
+            "All" to null,
+            "Today ($todayStr)" to todayStr,
+            "Branding" to "Branding",
+            "Fashion" to "Fashion",
+            "Interior" to "Interior / Decor",
+            "Nature" to "Nature",
+            "Industrial" to "Industrial / Freestyle"
+        )
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .horizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            domains.forEach { domain ->
-                val isSelected = (domain == "All" && domainFilter.isNullOrEmpty()) || domain == domainFilter
+            quickFilters.forEach { (label, filterVal) ->
+                val isSelected = when {
+                    filterVal == null -> domainFilter.isNullOrEmpty() && searchQuery.isEmpty()
+                    filterVal == todayStr -> searchQuery == todayStr
+                    else -> domainFilter == filterVal
+                }
                 FilterChip(
                     selected = isSelected,
                     onClick = {
-                        onDomainFilterChanged(if (domain == "All") null else domain)
+                        if (filterVal == null) {
+                            onDomainFilterChanged(null)
+                            onSearchQueryChanged("")
+                        } else if (filterVal == todayStr) {
+                            if (searchQuery == todayStr) onSearchQueryChanged("") else onSearchQueryChanged(todayStr)
+                        } else {
+                            onDomainFilterChanged(if (domainFilter == filterVal) null else filterVal)
+                        }
                     },
-                    label = { Text(domain, fontSize = 11.sp, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium) },
+                    label = { Text(label, fontSize = 11.sp, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium) },
                     colors = FilterChipDefaults.filterChipColors(
                         selectedContainerColor = MaterialTheme.colorScheme.primary,
                         selectedLabelColor = MaterialTheme.colorScheme.onPrimary
                     ),
-                    modifier = Modifier.testTag("saved_filter_${domain.lowercase().take(5)}")
+                    modifier = Modifier.testTag("saved_filter_${label.lowercase().take(5)}")
                 )
             }
         }
